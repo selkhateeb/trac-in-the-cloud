@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 from google.appengine.ext.webapp import util
-from trac.web.main import request_dispatcher
+from tic.web.main import dispatch_request
 
 def main():
-    util.run_wsgi_app(request_dispatcher)
+    util.run_wsgi_app(dispatch_request)
 
 if __name__ == '__main__':
     main()

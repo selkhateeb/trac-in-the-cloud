@@ -29,8 +29,8 @@ import new
 import os
 from tic.core import Interface
 from tic.core import TracError
-from tic.util.datefmt import LocalTimezone
-from tic.util.datefmt import http_date
+from tic.utils.datefmt import LocalTimezone
+from tic.utils.datefmt import http_date
 from tic.web.href import Href
 from tic.web.wsgi import _FileWrapper
 from urllib import unquote

@@ -309,7 +309,7 @@ class Request(object):
         for listener in self.redirect_listeners:
             listener(self, url, permanent)
 
-        self.session.save() # has to be done before the redirect is sent
+        #self.session.save() # has to be done before the redirect is sent
 
         if permanent:
             status = 301 # 'Moved Permanently'

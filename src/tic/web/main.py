@@ -16,11 +16,12 @@
 #
 import os
 from tic.conf import settings
-from tic.core import Component, ExtensionPoint, implements
+from tic.core import Component, ExtensionPoint, TracError, implements
 from tic.env import Environment
 from tic.exceptions import ImproperlyConfigured
 from tic.utils.importlib import import_module
-from tic.web.api import IAuthenticator, IRequestHandler, Request, RequestDone
+from tic.web.api import HTTPNotFound, IAuthenticator, IRequestHandler, Request, RequestDone
+
 
 os.environ['TRAC_SETTINGS_MODULE'] = 'settings'
 
@@ -46,10 +47,10 @@ class DefaultHandler(Component):
     implements(IRequestHandler)
 
     def match_request(self, req):
-        return True
+        return False
 
     def process_request(self, req):
-        print "yay"
+        print "yaaaay"
 
 class RequestDispatcher(Component):
     """Web request dispatcher.
@@ -61,25 +62,6 @@ class RequestDispatcher(Component):
     authenticators = ExtensionPoint(IAuthenticator)
     handlers = ExtensionPoint(IRequestHandler)
 
-    filters = settings.REQUEST_FILTERS
-    
-#    filters = OrderedExtensionsOption('trac', 'request_filters',
-#                                      IRequestFilter,
-#                                      doc="""Ordered list of filters to apply to all requests
-#            (''since 0.10'').""")
-#
-    default_handler = settings.DEFAULT_HANDLER
-#    default_handler = ExtensionOption('trac', 'default_handler',
-#                                      IRequestHandler, 'WikiModule',
-#                                      """Name of the component that handles requests to the base URL.
-#
-#        Options include `TimelineModule`, `RoadmapModule`, `BrowserModule`,
-#        `QueryModule`, `ReportModule`, `TicketModule` and `WikiModule`. The
-#        default is `WikiModule`. (''since 0.9'')""")
-#
-#    default_timezone = Option('trac', 'default_timezone', '',
-#                              """The default timezone to use""")
-#
     # Public API
 
     def authenticate(self, req):
@@ -91,22 +73,58 @@ class RequestDispatcher(Component):
             return 'anonymous'
 
     def dispatch(self, req):
-        print "now we are starting"
 
-        chosen_handler = None
-        for handler in self.handlers:
-            if handler.match_request(req):
-                chosen_handler = handler
-                handler.process_request(req)
-                break
-        a = self._load_default_handler()
+        # Setup request callbacks for lazily-evaluated properties
+        req.callbacks.update({
+            'authname': self.authenticate,
+#            'session': self._get_session,
+#            'locale': self._get_locale,
+#            'tz': self._get_timezone,
+#            'form_token': self._get_form_token
+        })
         
-        a.process_request(req)
+        # select handler
+        chosen_handler = None
+        try:
+            for handler in self.handlers:
+                if handler.match_request(req):
+                    chosen_handler = handler
+                    handler.process_request(req)
+                    break
+
+            # choose the default one if no handler found
+            if not chosen_handler:
+                if not req.path_info or req.path_info == '/':
+                    chosen_handler = self._load_default_handler()
+        except TracError, e:
+            raise HTTPInternalError(e)
+
+        
+        if not chosen_handler:
+            if req.path_info.endswith('/'):
+                # Strip trailing / and redirect
+                target = req.path_info.rstrip('/').encode('utf-8')
+                if req.query_string:
+                    target += '?' + req.query_string
+                req.redirect(req.href + target, permanent=True)
+            raise HTTPNotFound('No handler matched request to %s',
+                               req.path_info)
+
+        # pre-process any incoming request, whether a handler
+        # was found or not
+        chosen_handler = self._pre_process_request(req, chosen_handler)
+        
+
+        # process request
+        chosen_handler.process_request(req)
+
+        # TODO: post-process request
 
 
+    # Private methods
     def _load_default_handler(self):
         """loads the default handler"""
-        module, attr = self.default_handler.rsplit('.', 1)
+        module, attr = settings.DEFAULT_HANDLER.rsplit('.', 1)
         try:
             mod = import_module(module)
         except ImportError, e:
@@ -118,6 +136,18 @@ class RequestDispatcher(Component):
         except AttributeError:
             raise ImproperlyConfigured('Module "%s" does not define a "%s" default handler backend' % (module, attr))
         return cls(self.compmgr)
+
+    def _pre_process_request(self, req, chosen_handler):
+        for filter_ in settings.REQUEST_FILTERS:
+            chosen_handler = filter_.pre_process_request(req, chosen_handler)
+        return chosen_handler
+    
+    def _get_session(self, req):
+        #TODO: implement a session
+        #return Session(self.env, req)
+        pass
+
+
 
 
 

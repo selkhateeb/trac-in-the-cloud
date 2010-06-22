@@ -77,7 +77,7 @@ class RequestDispatcher(Component):
         # Setup request callbacks for lazily-evaluated properties
         req.callbacks.update({
             'authname': self.authenticate,
-#            'session': self._get_session,
+            'session': self._get_session,
 #            'locale': self._get_locale,
 #            'tz': self._get_timezone,
 #            'form_token': self._get_form_token
@@ -144,7 +144,8 @@ class RequestDispatcher(Component):
     
     def _get_session(self, req):
         #TODO: implement a session
-        #return Session(self.env, req)
+        from tic.web.sessions import Session
+        return Session()
         pass
 
 

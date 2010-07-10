@@ -82,14 +82,13 @@ class RequestDispatcher(Component):
 #            'tz': self._get_timezone,
 #            'form_token': self._get_form_token
         })
-        
+
         # select handler
         chosen_handler = None
         try:
             for handler in self.handlers:
                 if handler.match_request(req):
                     chosen_handler = handler
-                    handler.process_request(req)
                     break
 
             # choose the default one if no handler found
@@ -139,11 +138,28 @@ class RequestDispatcher(Component):
 
     def _pre_process_request(self, req, chosen_handler):
         for filter_ in settings.REQUEST_FILTERS:
-            chosen_handler = filter_.pre_process_request(req, chosen_handler)
+            filter = self._load_filter(filter_)
+            chosen_handler = filter.pre_process_request(req, chosen_handler)
         return chosen_handler
+
+    def _load_filter(self, filter):
+        """loads the filter"""
+        module, attr = filter.rsplit('.', 1)
+        try:
+            mod = import_module(module)
+        except ImportError, e:
+            raise ImproperlyConfigured('Error importing filter module %s: "%s"' % (module, e))
+        except ValueError, e:
+            raise ImproperlyConfigured('Error importing filter module. Is FILTERS a correctly defined class')
+        try:
+            cls = getattr(mod, attr)
+        except AttributeError:
+            raise ImproperlyConfigured('Module "%s" does not define a "%s" filter backend' % (module, attr))
+        return cls(self.compmgr)
+
+        
     
     def _get_session(self, req):
-        #TODO: implement a session
         from tic.web.sessions import Session
         return Session()
         pass

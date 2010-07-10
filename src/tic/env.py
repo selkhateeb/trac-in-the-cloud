@@ -43,3 +43,41 @@ class Environment(Component, ComponentManager):
     
     system_info_providers = ExtensionPoint(ISystemInfoProvider)
 
+
+    def __init__(self, options=[]):
+        """Initialize the Trac environment.
+
+        @param path:   the absolute path to the Trac environment
+        @param create: if `True`, the environment is created and populated with
+                       default data; otherwise, the environment is expected to
+                       already exist.
+        @param options: A list of `(section, name, value)` tuples that define
+                        configuration options
+        """
+        ComponentManager.__init__(self)
+
+        self.systeminfo = []
+
+        self._href = self._abs_href = None
+
+
+        from tic.loader import load_components
+        plugins_dir = None
+        load_components(self, plugins_dir and (plugins_dir,))
+
+    def enable_component(self, cls):
+        """Enable a component or module."""
+        self._component_rules[self._component_name(cls)] = True
+
+    @property
+    def _component_rules(self):
+        try:
+            return self._rules
+        except AttributeError:
+            self._rules = {}
+            for name, value in self.config.options('components'):
+                if name.endswith('.*'):
+                    name = name[:-2]
+                self._rules[name.lower()] = value.lower() in ('enabled', 'on')
+            return self._rules
+        

@@ -99,12 +99,15 @@ class ServiceHandler(Component):
             #get the module, class and method names
             module, class_name, method_name = rpc_method_name.rsplit('.', 2)
 
+            service = None
             #find the called service
             for srv in self.services:
                 if (srv.__class__.__name__ == class_name) and (srv.__class__.__module__ == module):
                     service = srv
                     break
 
+            if not service:
+                raise ServiceMethodNotFound(rpc_method_name)
             #get the method and return it
             mod = import_module(module)
             cls = getattr(mod, class_name)

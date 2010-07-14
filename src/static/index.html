@@ -21,14 +21,15 @@ and open the template in the editor.
                         transport:"POST",
                         target:"/rpc",
                         services:{
-                            "tic.rpc.Fun.hi":{
+                            "tic.rpc.api.CommandDispatcher.execute":{
                                 parameters:[{type:"string"}] // this is optional
                             }
                         }
                     });
 
                     a = new app.dojo.LoginCommand();
-                    var deferred = echoService.tic.rpc.Fun.hi(a);
+                    a.a = "wow"
+                    var deferred = echoService.tic.rpc.api.CommandDispatcher.execute(a);
                     deferred.addCallback(function(result) {
                         alert(result);
                     });

@@ -8,9 +8,9 @@
 
 import operator
 import sys
-#import tic.utils.jsonpickle.util as util
-#import tic.utils.jsonpickle.tags as tags
-#import tic.utils.jsonpickle.handlers as handlers
+from tic.utils.jsonpickle.tags import *
+from tic.utils.jsonpickle.util import *
+from tic.utils.jsonpickle.handlers import *
 from tic.utils.jsonpickle.compat import set
 
 
@@ -56,26 +56,26 @@ class Unpickler(object):
         """
         self._push()
 
-        if has_tag(obj, tags.REF):
-            return self._pop(self._namedict.get(obj[tags.REF]))
+        if has_tag(obj, REF):
+            return self._pop(self._namedict.get(obj[REF]))
 
-        if has_tag(obj, tags.TYPE):
-            typeref = loadclass(obj[tags.TYPE])
+        if has_tag(obj, TYPE):
+            typeref = loadclass(obj[TYPE])
             if not typeref:
                 return self._pop(obj)
             return self._pop(typeref)
 
-        if has_tag(obj, tags.REPR):
-            return self._pop(loadrepr(obj[tags.REPR]))
+        if has_tag(obj, REPR):
+            return self._pop(loadrepr(obj[REPR]))
 
-        if has_tag(obj, tags.OBJECT):
+        if has_tag(obj, OBJECT):
 
-            cls = loadclass(obj[tags.OBJECT])
+            cls = loadclass(obj[OBJECT])
             if not cls:
                 return self._pop(obj)
 
             # check custom handlers
-            HandlerClass = handlers.registry.get(cls)
+            HandlerClass = registry.get(cls)
             if HandlerClass:
                 handler = HandlerClass(self)
                 return self._pop(handler.restore(obj))
@@ -97,20 +97,20 @@ class Unpickler(object):
             # keep a obj->name mapping for use in the _isobjref() case
             self._mkref(instance)
 
-            if hasattr(instance, '__setstate__') and has_tag(obj, tags.STATE):
-                state = self.restore(obj[tags.STATE])
+            if hasattr(instance, '__setstate__') and has_tag(obj, STATE):
+                state = self.restore(obj[STATE])
                 instance.__setstate__(state)
                 return self._pop(instance)
 
             for k, v in sorted(obj.iteritems(), key=operator.itemgetter(0)):
                 # ignore the reserved attribute
-                if k in tags.RESERVED:
+                if k in RESERVED:
                     continue
                 self._namestack.append(k)
                 # step into the namespace
                 value = self.restore(v)
-                if (util.is_noncomplex(instance) or
-                        util.is_dictionary_subclass(instance)):
+                if (is_noncomplex(instance) or
+                        is_dictionary_subclass(instance)):
                     instance[k] = value
                 else:
                     setattr(instance, k, value)
@@ -118,26 +118,26 @@ class Unpickler(object):
                 self._namestack.pop()
 
             # Handle list and set subclasses
-            if has_tag(obj, tags.SEQ):
+            if has_tag(obj, SEQ):
                 if hasattr(instance, 'append'):
-                    for v in obj[tags.SEQ]:
+                    for v in obj[SEQ]:
                         instance.append(self.restore(v))
                 if hasattr(instance, 'add'):
-                    for v in obj[tags.SEQ]:
+                    for v in obj[SEQ]:
                         instance.add(self.restore(v))
 
             return self._pop(instance)
 
-        if util.is_list(obj):
+        if is_list(obj):
             return self._pop([self.restore(v) for v in obj])
 
-        if has_tag(obj, tags.TUPLE):
-            return self._pop(tuple([self.restore(v) for v in obj[tags.TUPLE]]))
+        if has_tag(obj, TUPLE):
+            return self._pop(tuple([self.restore(v) for v in obj[TUPLE]]))
 
-        if has_tag(obj, tags.SET):
-            return self._pop(set([self.restore(v) for v in obj[tags.SET]]))
+        if has_tag(obj, SET):
+            return self._pop(set([self.restore(v) for v in obj[SET]]))
 
-        if util.is_dictionary(obj):
+        if is_dictionary(obj):
             data = {}
             for k, v in sorted(obj.iteritems(), key=operator.itemgetter(0)):
                 self._namestack.append(k)

@@ -1,5 +1,16 @@
+import tic.utils.jsonpickle as jsonpickle
+from app.dojo import LoginCommand
 from tic.core import Component, ExtensionPoint, Interface, implements
+from tic.rpc.json import dumps, loads
 
+##
+## JSON RPC
+##
+class IJsonRpcService(Interface):
+    """
+    Marker interface for all json rpc services
+    """
+    
 ##
 ## Implementation of the Command Design Pattern
 ##
@@ -51,17 +62,22 @@ class CommandDispatcher(Component):
     """
     Handles the execution of an incoming command and returns the Command Result
     """
+    implements(IJsonRpcService)
     commands = ExtensionPoint(ICommand)
 
     command_handlers = ExtensionPoint(ICommandHandler)
 
-    def dispatch(self, command):
+    def execute(self, command):
         """Documentation"""
 
+        obj = jsonpickle.decode(dumps(command))
+
         for command_handler in self.command_handlers:
-            if(isinstance(command, command_handler.command)):
-                result = command_handler.execute(command)
-                print result.hi
+            if(isinstance(obj, command_handler.command)):
+                return loads(jsonpickle.encode(command_handler.execute(obj)))
+
+        return "found na'n"
+                
 
 
 # a simple Login example
@@ -73,30 +89,20 @@ class LoginHandler(Component):
         self.command = LoginCommand
     
     def execute(self, command):
-        return LoginCommandResult(command.sayHi())
+        return LoginCommandResult(command.a)
 
 #    def command(self):
 #        """ """
 #        return LoginCommand
 
 
-class LoginCommand():
-
-    def sayHi(self):
-        """Documentation"""
-        return "hello"
+#class LoginCommand():
+#
+#    def __init__(self):
+#        self.hi = "aa"
 
 
 class LoginCommandResult():
 
     def __init__(self, string):
         self.hi = string
-
-
-##
-## JSON RPC
-##
-class IJsonRpcService(Interface):
-    """
-    Marker interface for all json rpc services
-    """

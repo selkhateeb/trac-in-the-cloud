@@ -57,7 +57,7 @@ added to JSON.
 """
 
 from tic.utils.jsonpickle.pickler import Pickler
-#from tic.utils.jsonpickle.unpickler import Unpickler
+from tic.utils.jsonpickle.unpickler import Unpickler
 
 __version__ = '0.4dev'
 __all__ = ('encode', 'decode')

@@ -1,5 +1,8 @@
 from tic.core import Component, ExtensionPoint, Interface, implements
 
+##
+## Implementation of the Command Design Pattern
+##
 
 class ICommand(Interface):
     """
@@ -44,7 +47,6 @@ class ICommandHandler(Interface):
         returns the command class
         """
 
-
 class CommandDispatcher(Component):
     """
     Handles the execution of an incoming command and returns the Command Result
@@ -62,7 +64,7 @@ class CommandDispatcher(Component):
                 print result.hi
 
 
-
+# a simple Login example
 class LoginHandler(Component):
     implements(ICommandHandler)
 
@@ -89,4 +91,12 @@ class LoginCommandResult():
 
     def __init__(self, string):
         self.hi = string
-        
+
+
+##
+## JSON RPC
+##
+class IJsonRpcService(Interface):
+    """
+    Marker interface for all json rpc services
+    """

@@ -1,12 +1,22 @@
 
 
 from tic.core import Component, implements
-from tic.rpc.serviceHandler import ServiceHandler, ServiceMethod
+from tic.rpc.api import IJsonRpcService
+from tic.rpc.serviceHandler import ServiceHandler
+from tic.utils.importlib import import_module
+from tic.web.dojo import to_dojo
 from tic.web.api import IRequestHandler
 
-class MyService(object):
-    @ServiceMethod
-    def sayHi(self, msg):
+#class MyService(object):
+#    @ServiceMethod
+#    def sayHi(self, msg):
+#        return msg
+
+class Fun(Component):
+    implements(IJsonRpcService)
+
+    def hi(self, msg):
+        """returns msg"""
         return msg
 
 
@@ -49,8 +59,8 @@ class JsonRpcDispatcher(Component):
             
         """
         json = req.read()
-        ms = MyService()
-        service = ServiceHandler(ms)
+#        ms = MyService()
+        service = ServiceHandler(self.compmgr)
         data = service.handleRequest(json)
         req.send(data, "application/json")
 
@@ -63,7 +73,7 @@ class DojoClassDispatcher(Component):
 
     def match_request(self, req):
         """Return whether the handler wants to process the given request."""
-        if(req.path_info == "/dojo"):
+        if req.path_info.startswith("/dojo"):
             return True
         return False
 
@@ -73,7 +83,14 @@ class DojoClassDispatcher(Component):
         able to use it in the Rpc request
         """
 
-        print "this is a dojo class mapper that is coming very soon"
+        fully_qualified_class_name = req.path_info.split("/", 2)[2].replace("/", ".").replace(".xd.js", "")
+
+        module, attr = fully_qualified_class_name.rsplit('.', 1)
+        mod = import_module(module)
+        cls = getattr(mod, attr)
+
+        a = to_dojo(cls())
+        req.send(a, "application/json")
 
 
     

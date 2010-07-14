@@ -7,24 +7,28 @@ and open the template in the editor.
     <head>
         <title></title>
         <meta http-equiv="Content-Type" content="text/html; charset=MacRoman">
-        <script type="text/javascript" src="http://o.aolcdn.com/dojo/1.4/dojo/dojo.xd.js"></script>
+        <script type="text/javascript"
+                djConfig="useXDomain: true, modulePaths: {'app': 'http://localhost:8080/dojo/app'}"
+        src="http://o.aolcdn.com/dojo/1.4/dojo/dojo.xd.js"></script>
         <script type="text/javascript">
             dojo.addOnLoad(function(){
-
                 dojo.require("dojox.rpc.Service");
                 dojo.require("dojox.rpc.JsonRPC");
+                dojo.require("app.dojo.LoginCommand")
                 dojo.addOnLoad(function(){
                     echoService = new dojox.rpc.Service({
-                        envelope:"JSON-RPC-1.0",
+                        envelope:"JSON-RPC-2.0",
                         transport:"POST",
                         target:"/rpc",
                         services:{
-                            sayHi:{
+                            "tic.rpc.Fun.hi":{
                                 parameters:[{type:"string"}] // this is optional
                             }
                         }
                     });
-                    var deferred = echoService.sayHi("Kris");
+
+                    a = new app.dojo.LoginCommand();
+                    var deferred = echoService.tic.rpc.Fun.hi(a);
                     deferred.addCallback(function(result) {
                         alert(result);
                     });

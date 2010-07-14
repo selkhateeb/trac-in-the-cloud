@@ -19,7 +19,10 @@
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-from tic.rpc.json import loads, dumps, JSONEncodeException
+from tic.core import Component, ExtensionPoint
+from tic.rpc.api import IJsonRpcService
+from tic.rpc.json import JSONEncodeException, dumps, loads
+from tic.utils.importlib import import_module
 
 
 def ServiceMethod(fn):
@@ -37,13 +40,14 @@ class BadServiceRequest(ServiceException):
 
 class ServiceMethodNotFound(ServiceException):
     def __init__(self, name):
+        msg = "Could not find a service that has the method '" + name + "'"
+        ServiceException.__init__(self, msg)
         self.methodName=name
 
-class ServiceHandler(object):
+class ServiceHandler(Component):
 
-    def __init__(self, service=None):
-        self.service=service
-    
+    services = ExtensionPoint(IJsonRpcService)
+
     def handleRequest(self, json):
         err=None
         result = None
@@ -86,15 +90,29 @@ class ServiceHandler(object):
             raise ServiceRequestNotTranslatable(data)
         return req
      
-    def findServiceEndpoint(self, name):
+    def findServiceEndpoint(self, rpc_method_name):
+        '''
+        finds the requested method and returns it
+        '''
         try:
-            meth = getattr(self.service, name)
-            if getattr(meth, "IsServiceMethod"):
-                return meth
-            else:
-                raise ServiceMethodNotFound(name)
+
+            #get the module, class and method names
+            module, class_name, method_name = rpc_method_name.rsplit('.', 2)
+
+            #find the called service
+            for srv in self.services:
+                if (srv.__class__.__name__ == class_name) and (srv.__class__.__module__ == module):
+                    service = srv
+                    break
+
+            #get the method and return it
+            mod = import_module(module)
+            cls = getattr(mod, class_name)
+            meth = getattr(service, method_name)
+            return meth
+
         except AttributeError:
-            raise ServiceMethodNotFound(name)
+            raise ServiceMethodNotFound(rpc_method_name)
 
     def invokeServiceEndpoint(self, meth, args):
         return meth(*args)

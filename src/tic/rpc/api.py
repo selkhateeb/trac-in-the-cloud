@@ -38,6 +38,8 @@ class ICommandHandler(Interface):
 
     This lives in the server and its not serializable
     """
+    
+    command = None
 
     def execute(command):
         """
@@ -84,9 +86,11 @@ class CommandDispatcher(Component):
 class LoginHandler(Component):
     implements(ICommandHandler)
 
-    def __init__(self):
-        """Documentation"""
-        self.command = LoginCommand
+    command = LoginCommand
+
+#    def __init__(self):
+#        """Documentation"""
+#        self.command = LoginCommand
     
     def execute(self, command):
         return LoginCommandResult(command.a)

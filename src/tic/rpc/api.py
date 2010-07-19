@@ -1,5 +1,4 @@
 import tic.utils.jsonpickle as jsonpickle
-from app.dojo import LoginCommand
 from tic.core import Component, ExtensionPoint, Interface, implements
 from tic.rpc.json import dumps, loads
 
@@ -82,31 +81,3 @@ class CommandDispatcher(Component):
                 
 
 
-# a simple Login example
-class LoginHandler(Component):
-    implements(ICommandHandler)
-
-    command = LoginCommand
-
-#    def __init__(self):
-#        """Documentation"""
-#        self.command = LoginCommand
-    
-    def execute(self, command):
-        return LoginCommandResult(command.a)
-
-#    def command(self):
-#        """ """
-#        return LoginCommand
-
-
-#class LoginCommand():
-#
-#    def __init__(self):
-#        self.hi = "aa"
-
-
-class LoginCommandResult():
-
-    def __init__(self, string):
-        self.hi = string

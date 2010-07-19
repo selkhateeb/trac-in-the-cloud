@@ -178,7 +178,21 @@ class Pickler(object):
 
         if is_repr(obj):
             if self.unpicklable is True:
-                data[tags.REPR] = '%s/%s' % (obj.__class__.__module__,
+                """
+                ok .. seems that dates are unpicklable, however they one of
+                the most important data types so ...
+                we need to deal with that
+                """
+                from datetime import datetime
+                if isinstance(obj, datetime):
+                    #wohoo we got a date :)
+                    from time import mktime
+                    data = "new Date(" \
+                            + unicode(int((mktime(obj.timetuple())+1e-6*obj.microsecond)*1000)) \
+                            + ")"
+
+                else:
+                    data[tags.REPR] = '%s/%s' % (obj.__class__.__module__,
                                              repr(obj))
             else:
                 data = unicode(obj)

@@ -10,11 +10,13 @@ and open the template in the editor.
         <script type="text/javascript"
                 djConfig="useXDomain: true, modulePaths: {'app': 'http://localhost:8080/dojo/app'}"
         src="http://o.aolcdn.com/dojo/1.4/dojo/dojo.xd.js"></script>
+        <script type="text/javascript" src="js/tic/tic.js"></script>
         <script type="text/javascript">
             dojo.addOnLoad(function(){
                 dojo.require("dojox.rpc.Service");
                 dojo.require("dojox.rpc.JsonRPC");
-                dojo.require("app.dojo.LoginCommand")
+                dojo.require("app.dojo.LoginCommand");
+                
                 dojo.addOnLoad(function(){
                     echoService = new dojox.rpc.Service({
                         envelope:"JSON-RPC-2.0",
@@ -28,13 +30,14 @@ and open the template in the editor.
                     });
 
                     a = new app.dojo.LoginCommand();
-                    a.a = "wow"
+                    a.what = "walla";
+                    a.fromDateTime = new Date()
                     var deferred = echoService.tic.rpc.api.CommandDispatcher.execute(a);
                     deferred.addCallback(function(result) {
-                        alert(result);
+                        alert(result.fromDateTime);
                     });
-                })
-            })
+                });
+            });
         </script>
     </head>
     <body>

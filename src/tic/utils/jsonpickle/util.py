@@ -21,6 +21,31 @@ PRIMITIVES = str, unicode, int, float, bool, long
 NEEDS_REPR = (datetime.datetime, datetime.time, datetime.date,
               datetime.timedelta)
 
+def is_date(obj):
+    """
+    Returns True if obj is string and represents a javascript date
+    should be in the following format "new Date(23421432311);"
+
+    >>> is_date("asdfadf")
+    False
+
+    >>> is_date("new Date(43324324)")
+    True
+
+    >>> is_date("new Date(-43234324234)")
+    True
+
+    """
+
+    try:
+        if tags.DATE_REG_EXP.match(obj):
+            return True
+        return False
+    except:
+        return False
+
+
+
 def is_type(obj):
     """Returns True is obj is a reference to a type.
 

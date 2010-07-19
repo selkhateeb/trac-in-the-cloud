@@ -6,7 +6,10 @@ created by the Pickler class.  The Unpickler uses
 these custom key names to identify dictionaries
 that need to be specially handled.
 """
+import re
 from tic.utils.jsonpickle.compat import set
+
+DATE_REG_EXP = re.compile("^new Date\((?P<unix_time>\d+)\)$")
 
 OBJECT = 'declaredClass' # customizes to match the dojo specs
 TYPE = 'py/type'

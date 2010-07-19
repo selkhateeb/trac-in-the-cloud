@@ -6,6 +6,8 @@
 # This software is licensed as described in the file COPYING, which
 # you should have received as part of this distribution.
 
+from tic.utils.jsonpickle.tags import DATE_REG_EXP
+from tic.utils.jsonpickle.util import is_date
 import operator
 import sys
 from tic.utils.jsonpickle.tags import *
@@ -145,6 +147,11 @@ class Unpickler(object):
                 self._namestack.pop()
             return self._pop(data)
 
+        if is_date(obj):
+            from datetime import datetime
+            unix_time = int(DATE_REG_EXP.findall(obj)[0]) / 1000 #since js getTime is in ms
+            return self._pop(datetime.fromtimestamp(unix_time))
+        
         return self._pop(obj)
 
     def _refname(self):

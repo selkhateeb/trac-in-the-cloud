@@ -2,6 +2,7 @@
 from app.models import Event
 from tic.core import Component, implements
 from tic.rpc.api import ICommandHandler
+from tic.utils.short_cuts import object_mapper
 
 
 class LoginCommand():
@@ -26,11 +27,10 @@ class LoginHandler(Component):
     command = LoginCommand
 
     def execute(self, command):
-        event = Event()
-        event.magic(command)
+        event = object_mapper(command, Event())
         event.put()
+        
         return LoginCommandResult(event.what, event.fromDateTime)
-
 
 
 

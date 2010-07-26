@@ -1,3 +1,4 @@
+import os.path
 #!/usr/bin/env python
 #
 # Copyright 2007 Google Inc.
@@ -14,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import fnmatch
+import logging
 import os
 from tic.conf import settings
 from tic.core import Component, ExtensionPoint, TracError, implements
@@ -23,7 +26,7 @@ from tic.utils.importlib import import_module
 from tic.web.api import HTTPNotFound, IAuthenticator, IRequestHandler, Request, RequestDone
 
 
-os.environ['TRAC_SETTINGS_MODULE'] = 'settings'
+os.environ['TRAC_SETTINGS_MODULE'] = 'tic.conf.global_settings'
 
 def dispatch_request(environ, start_response):
     """Main entry point for the Trac web interface.
@@ -50,7 +53,8 @@ class DefaultHandler(Component):
         return False
 
     def process_request(self, req):
-        print "yaaaay"
+        index = "index.html"
+        req.send_file(os.path.abspath(index), "text/html")
 
 class RequestDispatcher(Component):
     """Web request dispatcher.
@@ -87,6 +91,7 @@ class RequestDispatcher(Component):
         chosen_handler = None
         try:
             for handler in self.handlers:
+                logging.debug(handler.__class__.__name__)
                 if handler.match_request(req):
                     chosen_handler = handler
                     break

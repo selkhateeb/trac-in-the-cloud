@@ -62,8 +62,7 @@ class Environment(Component, ComponentManager):
 
 
         from tic.loader import load_components
-        plugins_dir = None
-        load_components(self, plugins_dir and (plugins_dir,))
+        load_components(self)
 
     def enable_component(self, cls):
         """Enable a component or module."""

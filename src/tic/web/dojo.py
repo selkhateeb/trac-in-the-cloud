@@ -17,3 +17,28 @@ def to_dojo(object):
 
     return dojo_class
 
+def render_xd_classes(js_file_path, req):
+    """Documentation"""
+    from google.appengine.ext.webapp import template
+    import os, re
+    from tic.utils.jsparser import parse
+    nodes = parse(file(js_file_path).read(), js_file_path)
+
+    provide_matcher = re.compile(r'dojo.provide\("(.*)"\)')
+    require_matcher = re.compile(r'dojo.require\("(.*)"\)')
+    vars = {'requireList': list()}
+    for node in nodes:
+        source = node.getSource()
+        #is it a dojo.provide statement?
+        if provide_matcher.match(source):
+            vars['provide'] = provide_matcher.findall(source)[0]
+
+        elif require_matcher.match(source):
+            vars['requireList'].append(require_matcher.findall(source)[0])
+        else:
+            vars['declaration'] = source
+
+    mimetype = "application/json;charset=utf-8"
+    req.send_header('Content-Type', mimetype)
+    path = os.path.join(os.path.dirname(__file__), 'templates/xd.js')
+    req.write(template.render(path, vars))

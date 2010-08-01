@@ -58,7 +58,19 @@ class DefaultHandler(Component):
         if self.match_request(req):
             file = req.path_info[1:] #removes the first '/'
 
+            if file.endswith(".xd.js"): # Dojo Cross domain. we need to genereate the file
+                #get the basic file
+                file = file.replace(".xd.", ".")
+                from tic.web.dojo import render_xd_classes
+                render_xd_classes(file, req)
+                return
+
+
+
         req.send_file(os.path.abspath(file))
+
+        
+
         
 class RequestDispatcher(Component):
     """Web request dispatcher.

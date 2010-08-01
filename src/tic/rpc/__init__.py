@@ -25,9 +25,7 @@ class JsonRpcDispatcher(Component):
 
     def match_request(self, req):
         """Return whether the handler wants to process the given request."""
-        if(req.path_info == "/rpc"):
-            return True
-        return False
+        return req.path_info == "/rpc"
 
     def process_request(self, req):
         """
@@ -74,9 +72,7 @@ class DojoClassDispatcher(Component):
 
     def match_request(self, req):
         """Return whether the handler wants to process the given request."""
-        if req.path_info.startswith("/dojo"):
-            return True
-        return False
+        return "/server/" in req.path_info
 
     def process_request(self, req):
         """
@@ -84,8 +80,7 @@ class DojoClassDispatcher(Component):
         able to use it in the Rpc request
         """
 
-        fully_qualified_class_name = req.path_info.split("/", 2)[2].replace("/", ".").replace(".xd.js", "")
-
+        fully_qualified_class_name = req.path_info[1:].replace("/", ".").replace(".xd.js", "")
         module, attr = fully_qualified_class_name.rsplit('.', 1)
         mod = import_module(module)
         cls = getattr(mod, attr)

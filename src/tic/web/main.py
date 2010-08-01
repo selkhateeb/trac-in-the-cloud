@@ -56,9 +56,9 @@ class DefaultHandler(Component):
     def process_request(self, req):
         file = "index.html"
         if self.match_request(req):
-            file = req.path_info
+            file = req.path_info[1:] #removes the first '/'
 
-        req.send_file(os.path.abspath(file[1:]))
+        req.send_file(os.path.abspath(file))
         
 class RequestDispatcher(Component):
     """Web request dispatcher.

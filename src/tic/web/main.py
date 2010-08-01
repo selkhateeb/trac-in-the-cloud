@@ -50,12 +50,16 @@ class DefaultHandler(Component):
     implements(IRequestHandler)
 
     def match_request(self, req):
-        return False
+        #TODO: 
+        return "/client/" in req.path_info
 
     def process_request(self, req):
-        index = "index.html"
-        req.send_file(os.path.abspath(index), "text/html")
+        file = "index.html"
+        if self.match_request(req):
+            file = req.path_info
 
+        req.send_file(os.path.abspath(file[1:]))
+        
 class RequestDispatcher(Component):
     """Web request dispatcher.
 

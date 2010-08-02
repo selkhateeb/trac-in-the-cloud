@@ -14,15 +14,14 @@ dojo.declare(
             transport:"POST",
             target:"/rpc",
             services:{
-                "tic.rpc.api.CommandDispatcher.execute":{
-                    parameters:[{
-                        type:"string"
-                    }] // this is optional
-                }
+                "tic.rpc.api.CommandDispatcher.execute":{}
             }
         }),
 
-        execute: function(action){
-            return this._service.tic.rpc.api.CommandDispatcher.execute(action);
+        execute: function(command, callbackFunction){
+            var deferred = this._service.tic.rpc.api.CommandDispatcher.execute(command);
+            if(callbackFunction)
+                deferred.addCallback(callbackFunction);
+            return deferred
         }
     });

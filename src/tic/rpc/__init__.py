@@ -72,7 +72,7 @@ class DojoClassDispatcher(Component):
 
     def match_request(self, req):
         """Return whether the handler wants to process the given request."""
-        return "/server/" in req.path_info
+        return "/shared/" in req.path_info
 
     def process_request(self, req):
         """

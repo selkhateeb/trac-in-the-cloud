@@ -59,7 +59,7 @@ class JsonRpcDispatcher(Component):
         json = req.read()
 #        ms = MyService()
         service = ServiceHandler(self.compmgr)
-        data = service.handleRequest(json)
+        data = service.handleRequest(json, req)
         req.send(data, "application/json")
         
 

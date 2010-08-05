@@ -39,7 +39,7 @@ class ICommandHandler(Interface):
     """
     
     command = None
-
+    request = None
     def execute(command):
         """
         Executes the Command
@@ -75,6 +75,7 @@ class CommandDispatcher(Component):
 
         for command_handler in self.command_handlers:
             if(isinstance(obj, command_handler.command)):
+                command_handler.request = self.request
                 return loads(jsonpickle.encode(command_handler.execute(obj)))
 
         return "found na'n"

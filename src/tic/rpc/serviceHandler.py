@@ -48,7 +48,8 @@ class ServiceHandler(Component):
 
     services = ExtensionPoint(IJsonRpcService)
 
-    def handleRequest(self, json):
+    def handleRequest(self, json, request):
+        self.request = request
         err=None
         result = None
         id_=''
@@ -104,13 +105,14 @@ class ServiceHandler(Component):
             for srv in self.services:
                 if (srv.__class__.__name__ == class_name) and (srv.__class__.__module__ == module):
                     service = srv
+                    service.request = self.request
                     break
 
             if not service:
                 raise ServiceMethodNotFound(rpc_method_name)
             #get the method and return it
             mod = import_module(module)
-            cls = getattr(mod, class_name)
+            #cls = getattr(mod, class_name)
             meth = getattr(service, method_name)
             return meth
 

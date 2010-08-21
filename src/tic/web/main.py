@@ -47,6 +47,10 @@ def dispatch_request(environ, start_response):
     return resp
 
 class DefaultHandler(Component):
+    '''
+    This is the default handler. It basically handles the entry, index.html
+    and converting any dojo files to cross domain,xd, files if needed
+    '''
     implements(IRequestHandler)
 
     def match_request(self, req):
@@ -64,8 +68,6 @@ class DefaultHandler(Component):
                 from tic.web.dojo import render_xd_classes
                 render_xd_classes(file, req)
                 return
-
-
 
         req.send_file(os.path.abspath(file))
 
@@ -183,7 +185,6 @@ class RequestDispatcher(Component):
     def _get_session(self, req):
         from tic.web.sessions import Session
         return Session()
-        pass
 
 
 

@@ -1,8 +1,10 @@
 
 import tic.utils.jsonpickle as jsonpickle
-
+#DEPRECATED
 def to_dojo(object):
-    """converts a python class to a dojo class"""
+    """
+    @Depreicated
+    converts a python class to a dojo class"""
 
     class_name = object.__class__.__module__ + "." + object.__class__.__name__
     json = jsonpickle.encode(object)
@@ -17,14 +19,17 @@ def to_dojo(object):
 
     return dojo_class
 
-def render_xd_classes(js_file_path, req):
+def render_xd_classes(js_file_path_or_content, req):
     """
     Renders the cross-domain dojo files
     """
     from google.appengine.ext.webapp import template
     import os, re
     from tic.utils.jsparser import parse
-    nodes = parse(file(js_file_path).read(), js_file_path)
+    try:
+        nodes = parse(file(js_file_path_or_content).read(), js_file_path_or_content)
+    except:
+        nodes = parse(js_file_path_or_content)
 
     provide_matcher = re.compile(r'dojo.provide\("(.*)"\)')
     require_matcher = re.compile(r'dojo.require\("(.*)"\)')

@@ -14,12 +14,12 @@ dojo.declare(
             transport:"POST",
             target:"/rpc",
             services:{
-                "tic.rpc.api.CommandDispatcher.execute":{}
+                "tic.web.cdp.main.CommandDispatcher.execute":{}
             }
         }),
 
         execute: function(command, callbackFunction){
-            var deferred = this._service.tic.rpc.api.CommandDispatcher.execute(command);
+            var deferred = this._service.tic.web.cdp.main.CommandDispatcher.execute(command);
             if(callbackFunction)
                 deferred.addCallback(callbackFunction);
             return deferred

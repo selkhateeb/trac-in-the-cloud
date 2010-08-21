@@ -48,7 +48,7 @@ class ServiceHandler(Component):
 
     services = ExtensionPoint(IJsonRpcService)
 
-    def handleRequest(self, json, request):
+    def handle_request(self, json, request):
         self.request = request
         err=None
         result = None
@@ -128,7 +128,10 @@ class ServiceHandler(Component):
             rslt = None
 
         try:
-            data = dumps({"result":rslt,"id":id_,"error":err})
+            if isinstance(rslt, basestring):
+                data = '{"result":%s,"id":%i,"error":%s}' % (rslt, id_, dumps(err))
+            else:
+                data = dumps({"result":rslt,"id":id_,"error":err})
         except JSONEncodeException, e:
             err = {"name": "JSONEncodeException", "message":"Result Object Not Serializable"}
             data = dumps({"result":None, "id":id_,"error":err})

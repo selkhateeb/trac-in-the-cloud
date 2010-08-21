@@ -1,4 +1,3 @@
-# Taken from Python 2.7 with permission from/by the original author.
 import sys
 
 def _resolve_name(name, package, level):
@@ -34,3 +33,23 @@ def import_module(name, package=None):
         name = _resolve_name(name[level:], package, level)
     __import__(name)
     return sys.modules[name]
+
+def loadclass(module_and_name):
+    """Loads the module and returns the class.
+
+    >>> loadclass('samples.Thing')
+    <class 'samples.Thing'>
+
+    >>> loadclass('example.module.does.not.exist.Missing')
+
+
+    >>> loadclass('samples.MissingThing')
+
+
+    """
+    try:
+        module, name = module_and_name.rsplit('.', 1)
+        import_module(module)
+        return getattr(sys.modules[module], name)
+    except:
+        return None

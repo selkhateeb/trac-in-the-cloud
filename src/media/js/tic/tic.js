@@ -34,7 +34,7 @@ dojo.addOnLoad(function(){
         }
 
         if(it instanceof Date){
-            return "\"new Date(" + it.getTime() + ")\"";
+            return it.getTime() + "";
         }
         // recurse
         var recurse = arguments.callee;

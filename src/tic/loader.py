@@ -2,7 +2,7 @@ import os.path
 
 import fnmatch
 import os
-from tic.utils.importlib import import_module
+from tic.util.importlib import import_module
 
 __all__ = ['load_components']
 

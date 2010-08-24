@@ -22,7 +22,7 @@ from tic.conf import settings
 from tic.core import Component, ExtensionPoint, TracError, implements
 from tic.env import Environment
 from tic.exceptions import ImproperlyConfigured
-from tic.utils.importlib import import_module
+from tic.util.importlib import import_module
 from tic.web.api import HTTPNotFound, IAuthenticator, IRequestHandler, Request, RequestDone
 
 
@@ -49,26 +49,14 @@ def dispatch_request(environ, start_response):
 class DefaultHandler(Component):
     '''
     This is the default handler. It basically handles the entry, index.html
-    and converting any dojo files to cross domain,xd, files if needed
     '''
     implements(IRequestHandler)
 
     def match_request(self, req):
-        #TODO: 
-        return "/client/" in req.path_info
+        return False
 
     def process_request(self, req):
         file = "index.html"
-        if self.match_request(req):
-            file = req.path_info[1:] #removes the first '/'
-
-            if file.endswith(".xd.js"): # Dojo Cross domain. we need to genereate the file
-                #get the basic file
-                file = file.replace(".xd.", ".")
-                from tic.web.dojo import render_xd_classes
-                render_xd_classes(file, req)
-                return
-
         req.send_file(os.path.abspath(file))
 
         

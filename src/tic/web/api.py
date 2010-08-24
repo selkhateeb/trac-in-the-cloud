@@ -14,29 +14,26 @@
 #
 # Author: Christopher Lenz <cmlenz@gmx.de>
 
-import sys
-
 from BaseHTTPServer import BaseHTTPRequestHandler
-from Cookie import BaseCookie
-from Cookie import CookieError
-from Cookie import SimpleCookie
-from StringIO import StringIO
+from Cookie import CookieError, BaseCookie, SimpleCookie
 import cgi
 from datetime import datetime
-from hashlib import md5
-import mimetypes
+import errno
 import new
+import mimetypes
 import os
-from tic.core import Interface
-from tic.core import TracError
-from tic.utils.datefmt import LocalTimezone
-from tic.utils.datefmt import http_date
-from tic.web.href import Href
-from tic.web.wsgi import _FileWrapper
-from urllib import unquote
+import socket
+from StringIO import StringIO
+import sys
 import urlparse
 
-localtz = LocalTimezone()
+from tic.core import Interface, TracError
+from tic.util import get_last_traceback, md5, unquote
+from tic.util.datefmt import http_date, localtz
+from tic.util.text import empty, to_unicode
+from tic.util.translation import _
+from tic.web.href import Href
+from tic.web.wsgi import _FileWrapper
 
 HTTP_STATUS = dict([(code, reason.title()) for code, (reason, description)
                     in BaseHTTPRequestHandler.responses.items()])
@@ -54,6 +51,8 @@ class HTTPException(Exception):
             self.detail = self.detail % args
         Exception.__init__(self, '%s %s (%s)' % (self.code, self.reason,
                                                  self.detail))
+
+    @classmethod
     def subclass(cls, name, code):
         """Create a new Exception class representing a HTTP status code."""
         reason = HTTP_STATUS.get(code, 'Unknown')
@@ -63,7 +62,6 @@ class HTTPException(Exception):
         new_class.code = code
         new_class.reason = reason
         return new_class
-    subclass = classmethod(subclass)
 
 
 for code in [code for code in HTTP_STATUS if code >= 400]:
@@ -106,21 +104,31 @@ class _RequestArgs(dict):
         return val
 
 
-def parse_query_string(query_string):
-    """Parse a query string into a _RequestArgs."""
-    args = _RequestArgs()
+def parse_arg_list(query_string):
+    """Parse a query string into a list of `(name, value)` tuples."""
+    args = []
+    if not query_string:
+        return args
     for arg in query_string.split('&'):
         nv = arg.split('=', 1)
         if len(nv) == 2:
             (name, value) = nv
         else:
-            (name, value) = (nv[0], '')
+            (name, value) = (nv[0], empty)
         name = unquote(name.replace('+', ' '))
         if isinstance(name, unicode):
             name = name.encode('utf-8')
         value = unquote(value.replace('+', ' '))
         if not isinstance(value, unicode):
             value = unicode(value, 'utf-8')
+        args.append((name, value))
+    return args
+
+
+def arg_list_to_args(arg_list):
+    """Convert a list of `(name, value)` tuples into into a `_RequestArgs`."""
+    args = _RequestArgs()
+    for name, value in arg_list:
         if name in args:
             if isinstance(args[name], list):
                 args[name].append(value)
@@ -183,7 +191,9 @@ class Request(object):
         self.outcookie = Cookie()
 
         self.callbacks = {
-            'args': Request._parse_args,
+            'arg_list': Request._parse_arg_list,
+            'args': lambda req: arg_list_to_args(req.arg_list),
+            'languages': Request._parse_languages,
             'incookie': Request._parse_cookies,
             '_inheaders': Request._parse_headers
         }
@@ -205,31 +215,64 @@ class Request(object):
         raise AttributeError(name)
 
     def __repr__(self):
+        path_info = self.environ.get('PATH_INFO', '')
         return '<%s "%s %r">' % (self.__class__.__name__, self.method,
-                                 self.path_info)
+                                 path_info)
 
     # Public API
 
-    method = property(fget=lambda self: self.environ['REQUEST_METHOD'],
-                      doc='The HTTP method of the request')
-    path_info = property(fget=lambda self: self.environ.get('PATH_INFO', '').decode('utf-8'),
-                         doc='Path inside the application')
-    query_string = property(fget=lambda self: self.environ.get('QUERY_STRING',
-                                                               ''),
-                            doc='Query part of the request')
-    remote_addr = property(fget=lambda self: self.environ.get('REMOTE_ADDR'),
-                           doc='IP address of the remote user')
-    remote_user = property(fget=lambda self: self.environ.get('REMOTE_USER'),
-                           doc='Name of the remote user, `None` if the user'
-                               'has not logged in using HTTP authentication')
-    scheme = property(fget=lambda self: self.environ['wsgi.url_scheme'],
-                      doc='The scheme of the request URL')
-    base_path = property(fget=lambda self: self.environ.get('SCRIPT_NAME', ''),
-                         doc='The root path of the application')
-    server_name = property(fget=lambda self: self.environ['SERVER_NAME'],
-                           doc='Name of the server')
-    server_port = property(fget=lambda self: int(self.environ['SERVER_PORT']),
-                           doc='Port number the server is bound to')
+    @property
+    def method(self):
+        """The HTTP method of the request"""
+        return self.environ['REQUEST_METHOD']
+
+    @property
+    def path_info(self):
+        """Path inside the application"""
+        path_info = self.environ.get('PATH_INFO', '')
+        try:
+            return unicode(path_info, 'utf-8')
+        except UnicodeDecodeError:
+            raise HTTPNotFound(_("Invalid URL encoding (was %(path_info)r)",
+                                 path_info=path_info))
+
+    @property
+    def query_string(self):
+        """Query part of the request"""
+        return self.environ.get('QUERY_STRING', '')
+
+    @property
+    def remote_addr(self):
+        """IP address of the remote user"""
+        return self.environ.get('REMOTE_ADDR')
+
+    @property
+    def remote_user(self):
+        """ Name of the remote user.
+
+        Will be `None` if the user has not logged in using HTTP authentication.
+        """
+        return self.environ.get('REMOTE_USER')
+
+    @property
+    def scheme(self):
+        """The scheme of the request URL"""
+        return self.environ['wsgi.url_scheme']
+
+    @property
+    def base_path(self):
+        """The root path of the application"""
+        return self.environ.get('SCRIPT_NAME', '')
+
+    @property
+    def server_name(self):
+        """Name of the server"""
+        return self.environ['SERVER_NAME']
+
+    @property
+    def server_port(self):
+        """Port number the server is bound to"""
+        return int(self.environ['SERVER_PORT'])
 
     def add_redirect_listener(self, listener):
         """Add a callable to be called prior to executing a redirect.
@@ -262,11 +305,13 @@ class Request(object):
             ctpos = value.find('charset=')
             if ctpos >= 0:
                 self._outcharset = value[ctpos + 8:].strip()
+        elif name.lower() == 'content-length':
+            self._content_length = int(value)
         self._outheaders.append((name, unicode(value).encode('utf-8')))
 
     def end_headers(self):
-        """Must be called after all headers have been sent and before the actual
-        content is written.
+        """Must be called after all headers have been sent and before the
+        actual content is written.
         """
         self._send_cookie_headers()
         self._write = self._start_response(self._status, self._outheaders)
@@ -302,14 +347,15 @@ class Request(object):
             raise RequestDone
 
     def redirect(self, url, permanent=False):
-        """Send a redirect to the client, forwarding to the specified URL. The
-        `url` may be relative or absolute, relative URLs will be translated
+        """Send a redirect to the client, forwarding to the specified URL.
+
+        The `url` may be relative or absolute, relative URLs will be translated
         appropriately.
         """
         for listener in self.redirect_listeners:
             listener(self, url, permanent)
 
-#        self.session.save() # has to be done before the redirect is sent
+        self.session.save() # has to be done before the redirect is sent
 
         if permanent:
             status = 301 # 'Moved Permanently'
@@ -328,15 +374,36 @@ class Request(object):
         self.send_header('Content-Type', 'text/plain')
         self.send_header('Content-Length', 0)
         self.send_header('Pragma', 'no-cache')
-        self.send_header('Cache-control', 'no-cache')
+        self.send_header('Cache-Control', 'no-cache')
         self.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
         self.end_headers()
-
         raise RequestDone
+
+    def display(self, template, content_type='text/html', status=200):
+        """Render the response using the ClearSilver template given by the
+        `template` parameter, which can be either the name of the template
+        file, or an already parsed `neo_cs.CS` object.
+        """
+        assert self.hdf, \
+               'HDF dataset not available. Check your clearsilver installation'
+        if self.args.has_key('hdfdump'):
+            # FIXME: the administrator should probably be able to disable HDF
+            #        dumps
+            self.perm.require('TRAC_ADMIN')
+            content_type = 'text/plain'
+            data = str(self.hdf)
+        else:
+            try:
+                form_token = self.form_token
+            except AttributeError:
+                form_token = None
+            data = self.hdf.render(template, form_token)
+
+        self.send(data, content_type, status)
 
     def send(self, content, content_type='text/html', status=200):
         self.send_response(status)
-        self.send_header('Cache-control', 'must-revalidate')
+        self.send_header('Cache-Control', 'must-revalidate')
         self.send_header('Content-Type', content_type + ';charset=utf-8')
         self.send_header('Content-Length', len(content))
         self.end_headers()
@@ -359,21 +426,29 @@ class Request(object):
             if template.endswith('.html'):
                 if env:
                     from trac.web.chrome import Chrome
-                    data = Chrome(env).render_template(self, template, data,
-                                                       'text/html')
+                    try:
+                        data = Chrome(env).render_template(self, template,
+                                                           data, 'text/html')
+                    except Exception:
+                        # second chance rendering, in "safe" mode
+                        data['trac_error_rendering'] = True
+                        data = Chrome(env).render_template(self, template,
+                                                           data, 'text/html')
                 else:
                     content_type = 'text/plain'
                     data = '%s\n\n%s: %s' % (data.get('title'),
                                              data.get('type'),
                                              data.get('message'))
         except: # failed to render
-        #TODO
-#            data = get_last_traceback()
+            data = get_last_traceback()
             content_type = 'text/plain'
+
+        if isinstance(data, unicode):
+            data = data.encode('utf-8')
 
         self.send_response(status)
         self._outheaders = []
-        self.send_header('Cache-control', 'must-revalidate')
+        self.send_header('Cache-Control', 'must-revalidate')
         self.send_header('Expires', 'Fri, 01 Jan 1999 00:00:00 GMT')
         self.send_header('Content-Type', content_type + ';charset=utf-8')
         self.send_header('Content-Length', len(data))
@@ -396,7 +471,7 @@ class Request(object):
         "304 Not Modified" response if it matches.
         """
         if not os.path.isfile(path):
-            raise HTTPNotFound("File %s not found" % path)
+            raise HTTPNotFound(_("File %(path)s not found", path=path))
 
         stat = os.stat(path)
         mtime = datetime.fromtimestamp(stat.st_mtime, localtz)
@@ -428,7 +503,7 @@ class Request(object):
         fileobj = self.environ['wsgi.input']
         if size is None:
             size = self.get_header('Content-Length')
-            if size is None or size == '':
+            if size is None:
                 size = -1
             else:
                 size = int(size)
@@ -438,23 +513,34 @@ class Request(object):
     def write(self, data):
         """Write the given data to the response body.
 
-        `data` can be either a `str` or an `unicode` string.
-        If it's the latter, the unicode string will be encoded
-        using the charset specified in the ''Content-Type'' header
+        `data` *must* be a `str` string, encoded with the charset
+        which has been specified in the ''Content-Type'' header
         or 'utf-8' otherwise.
+
+        Note that the ''Content-Length'' header must have been specified.
+        Its value either corresponds to the length of `data`, or, if there
+        are multiple calls to `write`, to the cumulated length of the `data`
+        arguments.
         """
         if not self._write:
             self.end_headers()
+        if not hasattr(self, '_content_length'):
+            raise RuntimeError("No Content-Length header set")
         if isinstance(data, unicode):
-            data = data.encode(self._outcharset or 'utf-8')
-        self._write(data)
+            raise ValueError("Can't send unicode content")
+        try:
+            self._write(data)
+        except (IOError, socket.error), e:
+            if e.args[0] in (errno.EPIPE, errno.ECONNRESET, 10053, 10054):
+                raise RequestDone
+            raise
 
     # Internal methods
 
-    def _parse_args(self):
-        """Parse the supplied request parameters into a dictionary."""
-        args = _RequestArgs()
-
+    def _parse_arg_list(self):
+        """Parse the supplied request parameters into a list of
+        `(name, value)` tuples.
+        """
         fp = self.environ['wsgi.input']
 
         # Avoid letting cgi.FieldStorage consume the input stream when the
@@ -465,6 +551,7 @@ class Request(object):
         if ctype not in ('application/x-www-form-urlencoded',
                          'multipart/form-data'):
             fp = StringIO('')
+
         # Python 2.6 introduced a backwards incompatible change for
         # FieldStorage where QUERY_STRING is no longer ignored for POST
         # requests. We'll keep the pre 2.6 behaviour for now...
@@ -473,22 +560,13 @@ class Request(object):
         fs = cgi.FieldStorage(fp, environ=self.environ, keep_blank_values=True)
         if self.method == 'POST':
             self.environ['QUERY_STRING'] = qs_on_post
-        if fs.list:
-            for name in fs.keys():
-                values = fs[name]
-                if not isinstance(values, list):
-                    values = [values]
-                for value in values:
-                    if not value.filename:
-                        value = unicode(value.value, 'utf-8')
-                    if name in args:
-                        if isinstance(args[name], list):
-                            args[name].append(value)
-                        else:
-                            args[name] = [args[name], value]
-                    else:
-                        args[name] = value
 
+        args = []
+        for value in fs.list or ():
+            name = value.name
+            if not value.filename:
+                value = unicode(value.value, 'utf-8')
+            args.append((name, value))
         return args
 
     def _parse_cookies(self):
@@ -508,6 +586,24 @@ class Request(object):
             headers.append(('content-type', self.environ['CONTENT_TYPE']))
         return headers
 
+    def _parse_languages(self):
+        """The list of languages preferred by the remote user, taken from the
+        ``Accept-Language`` header.
+        """
+        header = self.get_header('Accept-Language') or 'en-us'
+        langs = []
+        for i, lang in enumerate(header.split(',')):
+            code, params = cgi.parse_header(lang)
+            q = 1
+            if 'q' in params:
+                try:
+                    q = float(params['q'])
+                except ValueError:
+                    q = 0
+            langs.append((-q, i, code))
+        langs.sort()
+        return [code for q, i, code in langs]
+
     def _reconstruct_url(self):
         """Reconstruct the absolute base URL of the application."""
         host = self.get_header('Host')
@@ -515,7 +611,8 @@ class Request(object):
             # Missing host header, so reconstruct the host from the
             # server name and port
             default_port = {'http': 80, 'https': 443}
-            if self.server_port and self.server_port != default_port[self.scheme]:
+            if self.server_port and self.server_port != \
+                   default_port[self.scheme]:
                 host = '%s:%d' % (self.server_name, self.server_port)
             else:
                 host = self.server_name
@@ -531,7 +628,7 @@ class Request(object):
                            .replace(',', '%3C')
             self.outcookie[name]['path'] = path
 
-        cookies = self.outcookie.output(header='')
+        cookies = to_unicode(self.outcookie.output(header='')).encode('utf-8')
         for cookie in cookies.splitlines():
             self._outheaders.append(('Set-Cookie', cookie.strip()))
 
@@ -552,15 +649,18 @@ class IRequestHandler(Interface):
         """Return whether the handler wants to process the given request."""
 
     def process_request(req):
-        """Process the request. For ClearSilver, return a (template_name,
-        content_type) tuple, where `template` is the ClearSilver template to use
-        (either a `neo_cs.CS` object, or the file name of the template), and
-        `content_type` is the MIME type of the content. For Genshi, return a
-        (template_name, data, content_type) tuple, where `data` is a dictionary
-        of substitutions for the template.
+        """Process the request.
 
-        For both templating systems, "text/html" is assumed if `content_type` is
-        `None`.
+        For ClearSilver, return a `(template_name, content_type)` tuple,
+        where `template` is the ClearSilver template to use (either a
+        `neo_cs.CS` object, or the file name of the template), and
+        `content_type` is the MIME type of the content.
+
+        For Genshi, return a `(template_name, data, content_type)` tuple,
+        where `data` is a dictionary of substitutions for the template.
+
+        For either templating systems, "text/html" is assumed if `content_type`
+        is `None`.
 
         Note that if template processing should not occur, this method can
         simply send the response itself and not return anything.
@@ -609,4 +709,20 @@ class IRequestFilter(Interface):
          - the default request handler did not return any result
 
         (Since 0.11)
+        """
+
+
+class ITemplateStreamFilter(Interface):
+    """Filter a Genshi event stream prior to rendering."""
+
+    def filter_stream(req, method, filename, stream, data):
+        """Return a filtered Genshi event stream, or the original unfiltered
+        stream if no match.
+
+        `req` is the current request object, `method` is the Genshi render
+        method (xml, xhtml or text), `filename` is the filename of the template
+        to be rendered, `stream` is the event stream and `data` is the data for
+        the current template.
+
+        See the Genshi documentation for more information.
         """

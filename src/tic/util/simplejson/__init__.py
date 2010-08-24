@@ -136,8 +136,8 @@ if not use_system_version:
         'JSONDecoder', 'JSONEncoder',
     ]
 
-    from tic.utils.simplejson.decoder import JSONDecoder
-    from tic.utils.simplejson.encoder import JSONEncoder
+    from tic.util.simplejson.decoder import JSONDecoder
+    from tic.util.simplejson.encoder import JSONEncoder
 
     _default_encoder = JSONEncoder(
         skipkeys=False,

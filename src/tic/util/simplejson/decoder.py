@@ -4,7 +4,7 @@ import re
 import sys
 import struct
 
-from tic.utils.simplejson.scanner import make_scanner
+from tic.util.simplejson.scanner import make_scanner
 c_scanstring = None
 
 __all__ = ['JSONDecoder']

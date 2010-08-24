@@ -12,8 +12,8 @@ import re
 import time     # Needed for Windows
 
 from tic.conf import global_settings
-from tic.utils.functional import LazyObject
-from tic.utils import importlib
+from tic.util.functional import LazyObject
+from tic.util import importlib
 
 ENVIRONMENT_VARIABLE = "TRAC_SETTINGS_MODULE"
 

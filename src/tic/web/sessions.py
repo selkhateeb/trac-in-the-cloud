@@ -43,7 +43,7 @@ from time import strftime
 from google.appengine.ext import db
 from google.appengine.api import memcache
 
-from tic.utils import simplejson
+from tic.util import simplejson
 
 # settings
 SESSION_SETTINGS = {

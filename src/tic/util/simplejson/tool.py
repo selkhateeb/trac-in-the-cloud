@@ -8,7 +8,7 @@ pretty-print::
     $ echo '{ 1.2:3.4}' | python -msimplejson.tool
     Expecting property name: line 1 column 2 (char 2)
 """
-from tic.utils import simplejson
+from tic.util import simplejson
 
 def main():
     import sys
